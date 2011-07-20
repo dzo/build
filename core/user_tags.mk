@@ -62,6 +62,7 @@ GRANDFATHERED_USER_MODULES += \
 	bootanimation \
 	brcm_patchram_plus \
 	bugreport \
+	busybox \
 	cfassembler \
 	check_stack \
 	check_trace \
@@ -131,6 +132,9 @@ GRANDFATHERED_USER_MODULES += \
 	gzip \
 	hciattach \
 	hierarchyviewer \
+	hierarchyviewer1 \
+	hierarchyviewer2 \
+	hierarchyviewerlib \
 	hist_trace \
 	hosttestlib \
 	icudata \
@@ -184,6 +188,7 @@ GRANDFATHERED_USER_MODULES += \
 	libbluetoothd \
 	libbuiltinplugin \
 	libbundlewrapper \
+	libbusybox \
 	libbz \
 	libc \
 	libcamera_client \
@@ -193,6 +198,7 @@ GRANDFATHERED_USER_MODULES += \
 	libc_nomalloc \
 	libctest \
 	libcutils \
+	libclearsilverregex \
 	libdb \
 	libdbus \
 	libdiskconfig \
@@ -375,6 +381,7 @@ GRANDFATHERED_USER_MODULES += \
 	mkyaffs2image \
 	monkey \
 	monkeyrunner \
+	MonkeyRunnerTest \
 	mtpd \
 	ndc \
 	netcfg \
@@ -443,6 +450,7 @@ GRANDFATHERED_USER_MODULES += \
 	sqlite3 \
 	stack_dump \
 	stringtemplate \
+	su \
 	surfaceflinger \
 	svc \
 	swing-worker-1.1 \
@@ -460,6 +468,7 @@ GRANDFATHERED_USER_MODULES += \
 	tuttle2.kcm \
 	uix \
 	usbtest \
+	utility_busybox \
 	vdc \
 	vm-tests \
 	vold \
