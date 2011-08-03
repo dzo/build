@@ -1280,12 +1280,12 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTATOOLS)
 	   --override_device=$(override_device) \
            $(BUILT_TARGET_FILES_PACKAGE) $@
 
-.PHONY: otapackage devnull
+.PHONY: otapackage oxygen
 otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
-devnull: otapackage
+oxygen: otapackage
 ifeq ($(TARGET_CUSTOM_RELEASETOOL),)
 	$(hide) \
-           ./vendor/devnull/tools/squisher
+           ./vendor/oxygen/tools/squisher
 else
 	$(hide) \
            $(TARGET_CUSTOM_RELEASETOOL)

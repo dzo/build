@@ -99,7 +99,7 @@ ifneq ($(filter $(LOCAL_MODULE_TAGS),user),)
     $(warning * PRODUCT_PACKAGES section of)
     $(warning * build/target/product/core.mk)
     $(warning * )
-    $(error user tag detected on new module - user tags are only supported on legacy modules)
+#    $(error user tag detected on new module - user tags are only supported on legacy modules)
   endif
 endif
 
