@@ -55,6 +55,9 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
   -d  (--device_type) <type>
       Specify mmc or mtd type device. mtd by default
 
+  -f  (--fota) <fota>
+      Specify if fota upgrade is used or not. not used by default
+
 """
 
 import sys
@@ -92,6 +95,7 @@ OPTIONS.extra_script = None
 OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
 OPTIONS.device_type = 'MTD'
+OPTIONS.fota = 0
 
 def MostPopularKey(d, default):
   """Given a dict, return the key corresponding to the largest
@@ -368,7 +372,7 @@ fi
   return Item.Get("system/etc/install-recovery.sh", dir=False)
 
 
-def WriteFullOTAPackage(input_zip, output_zip):
+def WriteFullOTAPackage(input_zip, output_zip, fota):
   # TODO: how to determine this?  We don't know what version it will
   # be installed on top of.  For now, we expect the API just won't
   # change very often.
@@ -387,7 +391,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
       input_tmp=OPTIONS.input_tmp,
       metadata=metadata,
       info_dict=OPTIONS.info_dict,
-      type=OPTIONS.device_type)
+      type=OPTIONS.device_type,
+      fota=OPTIONS.fota)
 
   if not OPTIONS.omit_prereq:
     ts = GetBuildProp("ro.build.date.utc", input_zip)
@@ -436,7 +441,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
     script.AppendExtra(OPTIONS.extra_script)
 
   script.UnmountAll()
-  script.AddToZip(input_zip, output_zip)
+  script.AddToZip(input_zip, output_zip, fota)
   WriteMetadata(metadata, output_zip)
 
 
@@ -477,7 +482,7 @@ def GetBuildProp(property, z):
   return m.group(1).strip()
 
 
-def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
+def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip, fota):
   source_version = OPTIONS.source_info_dict["recovery_api_version"]
   target_version = OPTIONS.target_info_dict["recovery_api_version"]
 
@@ -740,7 +745,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     script.ApplyPatch("/"+fn, "-", tf.size, tf.sha1, sf.sha1, "patch/"+fn+".p")
   script.SetPermissions("/system/build.prop", 0, 0, 0644)
 
-  script.AddToZip(target_zip, output_zip)
+  script.AddToZip(target_zip, output_zip, fota)
   WriteMetadata(metadata, output_zip)
 
 
@@ -768,12 +773,14 @@ def main(argv):
       OPTIONS.worker_threads = int(a)
     elif o in ("-d", "--device_type"):
       OPTIONS.device_type = a
+    elif o in ("-f", "--fota"):
+      OPTIONS.fota = a
     else:
       return False
     return True
 
   args = common.ParseOptions(argv, __doc__,
-                             extra_opts="b:k:i:d:wne:a:d:",
+                             extra_opts="b:k:i:d:wne:a:d:f:",
                              extra_long_opts=["board_config=",
                                               "package_key=",
                                               "incremental_from=",
@@ -783,7 +790,7 @@ def main(argv):
                                               "worker_threads=",
                                               "aslr_mode=",
                                               "device_type=",
-                                              ],
+                                              "fota="],
                              extra_option_handler=option_handler)
 
   if len(args) != 2:
@@ -813,7 +820,7 @@ def main(argv):
                                compression=zipfile.ZIP_DEFLATED)
 
   if OPTIONS.incremental_source is None:
-    WriteFullOTAPackage(input_zip, output_zip)
+    WriteFullOTAPackage(input_zip, output_zip, OPTIONS.fota)
     if OPTIONS.package_key is None:
       OPTIONS.package_key = OPTIONS.info_dict.get(
           "default_system_dev_certificate",
@@ -830,7 +837,7 @@ def main(argv):
     if OPTIONS.verbose:
       print "--- source info ---"
       common.DumpInfoDict(OPTIONS.source_info_dict)
-    WriteIncrementalOTAPackage(input_zip, source_zip, output_zip)
+    WriteIncrementalOTAPackage(input_zip, source_zip, output_zip, OPTIONS.fota)
 
   output_zip.close()
 

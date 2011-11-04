@@ -1255,6 +1255,11 @@ built_ota_tools := \
 	$(call intermediates-dir-for,EXECUTABLES,check_prereq)/check_prereq \
 	$(call intermediates-dir-for,EXECUTABLES,sqlite3)/sqlite3 \
 	$(call intermediates-dir-for,EXECUTABLES,updater)/updater
+
+ifneq ($(TARGET_FOTA_UPDATE_LIB),)
+built_ota_tools += $(call intermediates-dir-for,EXECUTABLES,ipth_dua)/ipth_dua
+endif
+
 $(BUILT_TARGET_FILES_PACKAGE): PRIVATE_OTA_TOOLS := $(built_ota_tools)
 
 $(BUILT_TARGET_FILES_PACKAGE): PRIVATE_RECOVERY_API_VERSION := $(RECOVERY_API_VERSION)
@@ -1401,6 +1406,12 @@ ifeq ($(TARGET_BUILD_TYPE),debug)
 endif
 name := $(name)-ota-$(FILE_NAME_TAG)
 
+ifeq ($(TARGET_HAS_FOTA),true)
+  fota := 1
+else
+  fota := 0
+endif
+
 INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
 
 $(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
@@ -1410,6 +1421,7 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTATOOLS)
 	$(hide) ./build/tools/releasetools/ota_from_target_files -v \
 	   -p $(HOST_OUT) \
            -k $(KEY_CERT_PAIR) \
+           -f $(fota) \
            $(BUILT_TARGET_FILES_PACKAGE) $@
 
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
@@ -1425,6 +1437,7 @@ $(INTERNAL_MMC_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTATOOLS)
 	$(hide) ./build/tools/releasetools/ota_from_target_files -v \
 	   -p $(HOST_OUT) \
            -d MMC \
+           -f $(fota) \
            -k $(KEY_CERT_PAIR) \
            $(BUILT_TARGET_FILES_PACKAGE) $@
 
