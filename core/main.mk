@@ -332,6 +332,16 @@ ADDITIONAL_BUILD_PROPERTIES += net.bt.name=Android
 # the cause of ANRs in the content process
 ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.stack-trace-file=/data/anr/traces.txt
 
+# Add e2fsck if using ext2/3/4 file system on target
+BUILD_E2FSCK := true
+ifneq ($(TARGET_USERIMAGES_USE_EXT2),true)
+  ifneq ($(TARGET_USERIMAGES_USE_EXT3),true)
+    ifneq ($(TARGET_USERIMAGES_USE_EXT4),true)
+      BUILD_E2FSCK := false
+    endif
+  endif
+endif
+
 # ------------------------------------------------------------
 # Define a function that, given a list of module tags, returns
 # non-empty if that module should be installed in /system.
@@ -477,6 +487,10 @@ subdirs := \
 	external/mksh \
 	external/yaffs2 \
 	external/zlib
+
+ifeq ($(BUILD_E2FSCK),true)
+    subdirs += external/e2fsprogs
+endif
 
 -include vendor/qcom/proprietary/common/build/defines.mk
 
