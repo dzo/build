@@ -477,6 +477,9 @@ subdirs := \
 	external/mksh \
 	external/yaffs2 \
 	external/zlib
+
+-include vendor/qcom/proprietary/common/build/defines.mk
+
 else	# !BUILD_TINY_ANDROID
 
 #
