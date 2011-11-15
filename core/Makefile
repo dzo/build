@@ -616,7 +616,7 @@ INTERNAL_USERIMAGES_BINARY_PATHS := $(sort $(dir $(INTERNAL_USERIMAGES_DEPS)))
 define build-userimage-ext-target
   @mkdir -p $(dir $(2))
     $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$(PATH) \
-	  $(MKEXTUSERIMG) $(1) $(2).$(4) $(4) $(3) $(5)
+	  $(MKEXTUSERIMG) -s $(1) $(2).$(4) $(4) $(3) $(5)
 endef
 endif
 
