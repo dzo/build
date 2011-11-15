@@ -665,6 +665,10 @@ ifdef BOARD_KERNEL_PAGESIZE
   INTERNAL_RECOVERYIMAGE_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
 endif
 
+INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
+kernel: $(INSTALLED_BOOTIMAGE_TARGET)
+.PHONY: kernel
+
 # Keys authorized to sign OTA packages this build will accept.  The
 # build always uses dev-keys for this; release packaging tools will
 # substitute other keys for this one.
