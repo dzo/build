@@ -787,9 +787,11 @@ define build-systemimage-target
     @echo "Target system fs image: $(1) - yaffs2"
     @mkdir -p $(dir $(1))
     $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT) $(1)
+    $(hide) chmod a+r $(1)
     @echo "Target system fs image: $(1) - $(INTERNAL_USERIMAGES_EXT_VARIANT)"
     @mkdir -p $(dir $(INSTALLED_SYSTEMIMAGE))
     $(call build-userimage-ext-target,$(TARGET_OUT),$(INSTALLED_SYSTEMIMAGE),system,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
+    $(hide) chmod a+r $(INSTALLED_SYSTEMIMAGE).$(INTERNAL_USERIMAGES_EXT_VARIANT)
 endef
 
 else # INTERNAL_USERIMAGES_USE_EXT != true
@@ -800,6 +802,7 @@ define build-systemimage-target
     @echo "Target system fs image: $(1)"
     @mkdir -p $(dir $(1))
     $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT) $(1)
+    $(hide) chmod a+r $(1)
 endef
 endif # INTERNAL_USERIMAGES_USE_EXT
 
@@ -908,8 +911,10 @@ define build-userdataimage-target
     $(call pretty,"Target userdata fs image: $(INSTALLED_USERDATAIMAGE_TARGET) - yaffs2")
     @mkdir -p $(TARGET_OUT_DATA)
     $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_DATA) $(INSTALLED_USERDATAIMAGE_TARGET)
+    $(hide) chmod a+r $(INSTALLED_USERDATAIMAGE_TARGET)
     $(call pretty,"Target userdata fs image: $(INSTALLED_USERDATAIMAGE_TARGET) - $(INTERNAL_USERIMAGES_EXT_VARIANT)")
     $(call build-userimage-ext-target,$(TARGET_OUT_DATA),$(INSTALLED_USERDATAIMAGE_TARGET),data,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_USERDATAIMAGE_PARTITION_SIZE))
+    $(hide) chmod a+r $(INSTALLED_USERDATAIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
     $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
 endef
 
@@ -920,6 +925,7 @@ define build-userdataimage-target
     $(call pretty,"Target userdata fs image: $(INSTALLED_USERDATAIMAGE_TARGET)")
     @mkdir -p $(TARGET_OUT_DATA)
     $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_DATA) $(INSTALLED_USERDATAIMAGE_TARGET)
+    $(hide) chmod a+r $(INSTALLED_USERDATAIMAGE_TARGET)
     $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
 endef
 endif # INTERNAL_USERIMAGES_USE_EXT
