@@ -1,0 +1,22 @@
+Makefile:529: warning: overriding commands for target `/hash-timestamp'
+Makefile:522: warning: ignoring old commands for target `/hash-timestamp'
+Makefile:529: warning: overriding commands for target `/NOTICE.txt'
+Makefile:522: warning: ignoring old commands for target `/NOTICE.txt'
+Makefile:529: warning: overriding commands for target `/NOTICE.html'
+Makefile:522: warning: ignoring old commands for target `/NOTICE.html'
+find: `/res': No such file or directory
+No private recovery resources for TARGET_DEVICE 
+No recovery.fstab for TARGET_DEVICE 
+Makefile:834: warning: overriding commands for target `/system.img'
+Makefile:810: warning: ignoring old commands for target `/system.img'
+make: Circular /system.img <- /system.img dependency dropped.
+make: *** No rule to make target `build/tools/buildinfo.sh', needed by `/build.prop'.  Stop.
+make: *** Waiting for unfinished jobs....
+Target buildinfo: /default.prop
+echo "#" > /default.prop; \
+	        echo "# ADDITIONAL_DEFAULT_PROPERTIES" >> /default.prop; \
+	        echo "#" >> /default.prop;
+/bin/sh: /default.prop: Permission denied
+/bin/sh: line 1: /default.prop: Permission denied
+/bin/sh: line 2: /default.prop: Permission denied
+make: *** [/default.prop] Error 1

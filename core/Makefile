@@ -605,7 +605,7 @@ endif
 INTERNAL_USERIMAGES_DEPS := $(MKYAFFS2)
 
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
-INTERNAL_USERIMAGES_DEPS += $(MKEXT2USERIMG) $(MAKE_EXT4FS)
+INTERNAL_USERIMAGES_DEPS += $(MKEXTUSERIMG) $(MAKE_EXT4FS)
 INTERNAL_USERIMAGES_BINARY_PATHS := $(sort $(dir $(INTERNAL_USERIMAGES_DEPS)))
 
 # $(1): src directory
@@ -616,7 +616,7 @@ INTERNAL_USERIMAGES_BINARY_PATHS := $(sort $(dir $(INTERNAL_USERIMAGES_DEPS)))
 define build-userimage-ext-target
   @mkdir -p $(dir $(2))
     $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$(PATH) \
-	  $(MKEXT2USERIMG) $(1) $(2).$(4) $(4) $(3) $(5)
+	  $(MKEXTUSERIMG) $(1) $(2).$(4) $(4) $(3) $(5)
 endef
 endif
 
