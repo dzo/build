@@ -214,7 +214,7 @@ $(INSTALLED_SDK_BUILD_PROP_TARGET): $(INSTALLED_BUILD_PROP_TARGET)
 # package stats
 PACKAGE_STATS_FILE := $(PRODUCT_OUT)/package-stats.txt
 PACKAGES_TO_STAT := \
-    $(sort $(filter $(TARGET_OUT)/% $(TARGET_OUT_DATA)/%, \
+    $(sort $(filter $(TARGET_OUT)/% $(TARGET_OUT_DATA)/% $(TARGET_OUT_PERSIST)/%, \
 	$(filter %.jar %.apk, $(ALL_DEFAULT_INSTALLED_MODULES))))
 $(PACKAGE_STATS_FILE): $(PACKAGES_TO_STAT)
 	@echo Package stats: $@
@@ -964,6 +964,69 @@ userdatatarball-nodeps: $(FS_GET_STATS)
 
 
 # -----------------------------------------------------------------
+# persist partition image
+INTERNAL_PERSISTIMAGE_FILES := \
+	$(filter $(TARGET_OUT_PERSIST)/%,$(ALL_DEFAULT_INSTALLED_MODULES))
+
+ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
+## Generate an ext image
+define build-persistimage-target
+    $(call pretty,"Target persist fs image: $(INSTALLED_PERSISTIMAGE_TARGET) - yaffs2")
+    @mkdir -p $(TARGET_OUT_PERSIST)
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_PERSIST) $(INSTALLED_PERSISTIMAGE_TARGET)
+    $(hide) chmod a+r $(INSTALLED_PERSISTIMAGE_TARGET)
+    $(call pretty,"Target persist fs image: $(INSTALLED_PERSISTIMAGE_TARGET) - $(INTERNAL_USERIMAGES_EXT_VARIANT)")
+    $(call build-userimage-ext-target,$(TARGET_OUT_PERSIST),$(INSTALLED_PERSISTIMAGE_TARGET),persist,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_PERSISTIMAGE_PARTITION_SIZE))
+    $(hide) chmod a+r $(INSTALLED_PERSISTIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
+    $(hide) $(call assert-max-image-size,$(INSTALLED_PERSISTIMAGE_TARGET),$(BOARD_PERSISTIMAGE_PARTITION_SIZE),yaffs)
+endef
+
+else # INTERNAL_USERIMAGES_USE_EXT != true
+
+## Generate a yaffs2 image
+define build-persistimage-target
+    $(call pretty,"Target persist fs image: $(INSTALLED_PERSISTIMAGE_TARGET)")
+    @mkdir -p $(TARGET_OUT_PERSIST)
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_PERSIST) $(INSTALLED_PERSISTIMAGE_TARGET)
+    $(hide) chmod a+r $(INSTALLED_PERSISTIMAGE_TARGET)
+    $(hide) $(call assert-max-image-size,$(INSTALLED_PERSISTIMAGE_TARGET),$(BOARD_PERSISTIMAGE_PARTITION_SIZE),yaffs)
+endef
+endif # INTERNAL_USERIMAGES_USE_EXT
+
+BUILT_PERSISTIMAGE_TARGET := $(PRODUCT_OUT)/persist.img
+
+# We just build this directly to the install location.
+INSTALLED_PERSISTIMAGE_TARGET := $(BUILT_PERSISTIMAGE_TARGET)
+$(INSTALLED_PERSISTIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS) \
+                                   $(INTERNAL_PERSISTIMAGE_FILES)
+	$(build-persistimage-target)
+
+.PHONY: persistimage-nodeps
+persistimage-nodeps: $(INTERNAL_USERIMAGES_DEPS)
+	$(build-persistimage-target)
+
+#######
+## persist partition tarball
+define build-persisttarball-target
+    $(call pretty,"Target persist fs tarball: " \
+                  "$(INSTALLED_PERSISTTARBALL_TARGET)")
+    $(MKTARBALL) $(FS_GET_STATS) \
+		$(PRODUCT_OUT) persist $(PRIVATE_PERSIST_TAR) \
+		$(INSTALLED_PERSISTTARBALL_TARGET)
+endef
+
+persist_tar := $(PRODUCT_OUT)/persist.tar
+INSTALLED_PERSISTTARBALL_TARGET := $(persist_tar).bz2
+$(INSTALLED_PERSISTTARBALL_TARGET): PRIVATE_PERSIST_TAR := $(persist_tar)
+$(INSTALLED_PERSISTTARBALL_TARGET): $(FS_GET_STATS) $(INTERNAL_PERSISTIMAGE_FILES)
+	$(build-persisttarball-target)
+
+.PHONY: persisttarball-nodeps
+persisttarball-nodeps: $(FS_GET_STATS)
+	$(build-persisttarball-target)
+
+
+# -----------------------------------------------------------------
 # bring in the installer image generation defines if necessary
 ifeq ($(TARGET_USE_DISKINSTALLER),true)
 include bootable/diskinstaller/config.mk
@@ -1044,6 +1107,7 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 		$(INSTALLED_RECOVERYIMAGE_TARGET) \
 		$(INSTALLED_SYSTEMIMAGE) \
 		$(INSTALLED_USERDATAIMAGE_TARGET) \
+		$(INSTALLED_PERSISTIMAGE_TARGET) \
 		$(INSTALLED_ANDROID_INFO_TXT_TARGET) \
 		$(built_ota_tools) \
 		$(APKCERTS_FILE) \
@@ -1101,6 +1165,9 @@ endif
 	@# Contents of the data image
 	$(hide) $(call package_files-copy-root, \
 		$(TARGET_OUT_DATA),$(zip_root)/DATA)
+	@# Contents of the persist image
+	$(hide) $(call package_files-copy-root, \
+		$(TARGET_OUT_PERSIST),$(zip_root)/PERSIST)
 	@# Extra contents of the OTA package
 	$(hide) mkdir -p $(zip_root)/OTA/bin
 	$(hide) $(ACP) $(INSTALLED_ANDROID_INFO_TXT_TARGET) $(zip_root)/OTA/
@@ -1231,6 +1298,7 @@ $(BUILT_TESTS_ZIP_PACKAGE): zip_root := $(intermediates)/$(name)
 $(BUILT_TESTS_ZIP_PACKAGE): \
 		$(BUILT_SYSTEMIMAGE) \
 		$(INSTALLED_USERDATAIMAGE_TARGET) \
+		$(INSTALLED_PERSISTIMAGE_TARGET) \
 		| $(ACP)
 	@echo "Package test files: $@"
 	$(hide) rm -rf $@ $(zip_root)
@@ -1247,6 +1315,9 @@ $(BUILT_TESTS_ZIP_PACKAGE): \
 	@# Contents of the data image
 	$(hide) $(call package_files-copy-root, \
 		$(TARGET_OUT_DATA),$(zip_root)/DATA)
+	@# Contents of the persist image
+	$(hide) $(call package_files-copy-root, \
+		$(TARGET_OUT_PERSIST),$(zip_root)/PERSIST)
 	$(hide) (cd $(zip_root) && zip -qry ../$(notdir $@) .)
 
 .PHONY: tests-zip-package
@@ -1321,7 +1392,8 @@ INTERNAL_EMULATOR_PACKAGE_FILES += \
         prebuilt/android-$(TARGET_ARCH)/kernel/kernel-qemu \
         $(INSTALLED_RAMDISK_TARGET) \
 		$(INSTALLED_SYSTEMIMAGE) \
-		$(INSTALLED_USERDATAIMAGE_TARGET)
+		$(INSTALLED_USERDATAIMAGE_TARGET) \
+		$(INSTALLED_PERSISTIMAGE_TARGET)
 
 name := $(TARGET_PRODUCT)-emulator-$(FILE_NAME_TAG)
 
@@ -1411,6 +1483,7 @@ deps := \
 	$(SYMBOLS_ZIP) \
 	$(INSTALLED_SYSTEMIMAGE) \
 	$(INSTALLED_USERDATAIMAGE_TARGET) \
+	$(INSTALLED_PERSISTIMAGE_TARGET) \
 	$(INSTALLED_RAMDISK_TARGET) \
 	$(INSTALLED_SDK_BUILD_PROP_TARGET) \
 	$(INSTALLED_BUILD_PROP_TARGET) \
