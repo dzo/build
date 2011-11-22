@@ -492,8 +492,6 @@ ifeq ($(BUILD_E2FSCK),true)
     subdirs += external/e2fsprogs
 endif
 
--include vendor/qcom/proprietary/common/build/defines.mk
-
 else	# !BUILD_TINY_ANDROID
 
 #
