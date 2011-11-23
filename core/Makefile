@@ -1025,6 +1025,28 @@ $(INSTALLED_PERSISTTARBALL_TARGET): $(FS_GET_STATS) $(INTERNAL_PERSISTIMAGE_FILE
 persisttarball-nodeps: $(FS_GET_STATS)
 	$(build-persisttarball-target)
 
+# -----------------------------------------------------------------
+# cache partition image
+
+ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
+## Generate an ext image
+define build-cacheimage-target
+    @mkdir -p $(TARGET_OUT_CACHE)
+    $(call pretty,"Target cache fs image: $(INSTALLED_CACHEIMAGE_TARGET) - $(INTERNAL_USERIMAGES_EXT_VARIANT)")
+    $(call build-userimage-ext-target,$(TARGET_OUT_CACHE),$(INSTALLED_CACHEIMAGE_TARGET),cache,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_CACHEIMAGE_PARTITION_SIZE))
+    $(hide) chmod a+r $(INSTALLED_CACHEIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
+endef
+else
+define build-cacheimage-target
+endef
+endif # INTERNAL_USERIMAGES_USE_EXT != true
+
+BUILT_CACHEIMAGE_TARGET := $(PRODUCT_OUT)/cache.img
+
+# We just build this directly to the install location.
+INSTALLED_CACHEIMAGE_TARGET := $(BUILT_CACHEIMAGE_TARGET)
+$(INSTALLED_CACHEIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS)
+	$(build-cacheimage-target)
 
 # -----------------------------------------------------------------
 # bring in the installer image generation defines if necessary
@@ -1108,6 +1130,7 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 		$(INSTALLED_SYSTEMIMAGE) \
 		$(INSTALLED_USERDATAIMAGE_TARGET) \
 		$(INSTALLED_PERSISTIMAGE_TARGET) \
+		$(INSTALLED_CACHEIMAGE_TARGET) \
 		$(INSTALLED_ANDROID_INFO_TXT_TARGET) \
 		$(built_ota_tools) \
 		$(APKCERTS_FILE) \
