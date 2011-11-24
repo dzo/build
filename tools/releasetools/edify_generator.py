@@ -261,17 +261,18 @@ class EdifyGenerator(object):
 
     common.ZipWriteStr(output_zip, "META-INF/com/google/android/updater-script",
                        "\n".join(self.script) + "\n")
+    fval = int(fota)
 
     if input_path is None:
       data = input_zip.read("OTA/bin/updater")
-      if fota is 1:
+      if fval:
         datadua = input_zip.read("OTA/bin/ipth_dua")
     else:
       data = open(os.path.join(input_path, "updater")).read()
-      if fota is 1:
+      if fval:
         datadua = open(os.path.join(input_path, "ipth_dua")).read()
     common.ZipWriteStr(output_zip, "META-INF/com/google/android/update-binary",
                         data, perms=0755)
-    if fota is 1:
+    if fval:
       common.ZipWriteStr(output_zip, "META-INF/com/google/android/ipth_dua",
                          datadua, perms=0755)
