@@ -1049,6 +1049,29 @@ $(INSTALLED_CACHEIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS)
 	$(build-cacheimage-target)
 
 # -----------------------------------------------------------------
+# tombstones partition image
+
+ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
+## Generate an ext image
+define build-tombstonesimage-target
+    @mkdir -p $(TARGET_OUT_TOMBSTONES)
+    $(call pretty,"Target tombstones fs image: $(INSTALLED_TOMBSTONESIMAGE_TARGET) - $(INTERNAL_USERIMAGES_EXT_VARIANT)")
+    $(call build-userimage-ext-target,$(TARGET_OUT_TOMBSTONES),$(INSTALLED_TOMBSTONESIMAGE_TARGET),tombstones,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_TOMBSTONESIMAGE_PARTITION_SIZE))
+    $(hide) chmod a+r $(INSTALLED_TOMBSTONESIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
+endef
+else
+define build-tombstonesimage-target
+endef
+endif # INTERNAL_USERIMAGES_USE_EXT
+
+BUILT_TOMBSTONESIMAGE_TARGET := $(PRODUCT_OUT)/tombstones.img
+
+# We just build this directly to the install location.
+INSTALLED_TOMBSTONESIMAGE_TARGET := $(BUILT_TOMBSTONESIMAGE_TARGET)
+$(INSTALLED_TOMBSTONESIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS)
+	$(build-tombstonesimage-target)
+
+# -----------------------------------------------------------------
 # bring in the installer image generation defines if necessary
 ifeq ($(TARGET_USE_DISKINSTALLER),true)
 include bootable/diskinstaller/config.mk
@@ -1131,6 +1154,7 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 		$(INSTALLED_USERDATAIMAGE_TARGET) \
 		$(INSTALLED_PERSISTIMAGE_TARGET) \
 		$(INSTALLED_CACHEIMAGE_TARGET) \
+		$(INSTALLED_TOMBSTONESIMAGE_TARGET) \
 		$(INSTALLED_ANDROID_INFO_TXT_TARGET) \
 		$(built_ota_tools) \
 		$(APKCERTS_FILE) \
