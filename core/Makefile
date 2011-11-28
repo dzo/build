@@ -370,12 +370,26 @@ ifdef BOARD_KERNEL_BASE
   INTERNAL_BOOTIMAGE_ARGS += --base $(BOARD_KERNEL_BASE)
 endif
 
+BOARD_KERNEL_2KPAGESIZE := $(strip $(BOARD_KERNEL_2KPAGESIZE))
+ifdef BOARD_KERNEL_2KPAGESIZE
+  INTERNAL_2K_BOOTIMAGE_ARGS := $(INTERNAL_BOOTIMAGE_ARGS)
+  INTERNAL_2K_BOOTIMAGE_ARGS += --pagesize $(BOARD_KERNEL_2KPAGESIZE)
+endif
+
 BOARD_KERNEL_PAGESIZE := $(strip $(BOARD_KERNEL_PAGESIZE))
 ifdef BOARD_KERNEL_PAGESIZE
   INTERNAL_BOOTIMAGE_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
 endif
 
 INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
+INSTALLED_2K_BOOTIMAGE_TARGET := $(2KPAGENAND_OUT)/boot.2knand.img
+
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+define install-2knand-boot-image
+    $(hide) $(MKBOOTIMG) $(INTERNAL_2K_BOOTIMAGE_ARGS) --output $(INSTALLED_2K_BOOTIMAGE_TARGET)
+    $(hide) $(call assert-max-image-size,$(INSTALLED_2K_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE),raw)
+endef
+endif
 
 ifeq ($(TARGET_BOOTIMAGE_USE_EXT2),true)
 tmp_dir_for_image := $(call intermediates-dir-for,EXECUTABLES,boot_img)/bootimg
@@ -390,6 +404,7 @@ else # TARGET_BOOTIMAGE_USE_EXT2 != true
 $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES)
 	$(call pretty,"Target boot image: $@")
 	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --output $@
+	$(hide) $(call install-2knand-boot-image)
 	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE),raw)
 endif # TARGET_BOOTIMAGE_USE_EXT2
 
@@ -627,6 +642,7 @@ endif
 ifeq (,$(filter true, $(TARGET_NO_KERNEL) $(TARGET_NO_RECOVERY) $(BUILD_TINY_ANDROID)))
 
 INSTALLED_RECOVERYIMAGE_TARGET := $(PRODUCT_OUT)/recovery.img
+INSTALLED_2K_RECOVERYIMAGE_TARGET := $(2KPAGENAND_OUT)/recovery.2knand.img
 
 recovery_initrc := $(call include-path-for, recovery)/etc/init.rc
 recovery_kernel := $(INSTALLED_KERNEL_TARGET) # same as a non-recovery system
@@ -660,6 +676,13 @@ endif
 ifdef BOARD_KERNEL_BASE
   INTERNAL_RECOVERYIMAGE_ARGS += --base $(BOARD_KERNEL_BASE)
 endif
+
+BOARD_KERNEL_2KPAGESIZE := $(strip $(BOARD_KERNEL_2KPAGESIZE))
+ifdef BOARD_KERNEL_2KPAGESIZE
+  INTERNAL_2K_RECOVERYIMAGE_ARGS := $(INTERNAL_RECOVERYIMAGE_ARGS)
+  INTERNAL_2K_RECOVERYIMAGE_ARGS += --pagesize $(BOARD_KERNEL_2KPAGESIZE)
+endif
+
 BOARD_KERNEL_PAGESIZE := $(strip $(BOARD_KERNEL_PAGESIZE))
 ifdef BOARD_KERNEL_PAGESIZE
   INTERNAL_RECOVERYIMAGE_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
@@ -686,6 +709,14 @@ $(RECOVERY_INSTALL_OTA_KEYS): $(OTA_PUBLIC_KEYS) $(DUMPKEY_JAR) $(extra_keys)
 	@rm -rf $@
 	@mkdir -p $(dir $@)
 	java -jar $(DUMPKEY_JAR) $(PRIVATE_OTA_PUBLIC_KEYS) $(extra_keys) > $@
+
+
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+define install-2knand-recovery-image
+    $(MKBOOTIMG) $(INTERNAL_2K_RECOVERYIMAGE_ARGS) --output $(INSTALLED_2K_RECOVERYIMAGE_TARGET)
+    $(hide) $(call assert-max-image-size,$(INSTALLED_2K_RECOVERYIMAGE_TARGET),$(BOARD_RECOVERYIMAGE_PARTITION_SIZE),raw)
+endef
+endif
 
 $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
 		$(INSTALLED_RAMDISK_TARGET) \
@@ -720,6 +751,7 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
 	        > $(TARGET_RECOVERY_ROOT_OUT)/default.prop
 	$(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $(recovery_ramdisk)
 	$(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) --output $@
+	$(hide) $(call install-2knand-recovery-image)
 	@echo ----- Made recovery image -------- $@
 	$(hide) $(call assert-max-image-size,$@,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE),raw)
 
@@ -735,6 +767,29 @@ mkyaffs2_extra_flags := -c $(BOARD_KERNEL_PAGESIZE)
 else
 mkyaffs2_extra_flags :=
 BOARD_KERNEL_PAGESIZE := 2048
+endif
+
+ifeq ($(BOARD_HAS_8BIT_BCHECC_SUPPORT),true)
+$(shell mkdir -p $(BCHECC_OUT))
+endif
+
+# Define yaffs2 flags for 8bit BCH ECC NAND
+ifeq ($(BOARD_HAS_8BIT_BCHECC_SUPPORT),true)
+mkyaffs2_extra_bchecc_flags := $(mkyaffs2_extra_flags)
+mkyaffs2_extra_bchecc_flags += -s $(BOARD_KERNEL_BCHECC_SPARESIZE)
+endif
+
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+$(shell mkdir -p $(2KPAGENAND_OUT))
+endif
+
+# Define yaffs2 flags for 2K NAND
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+mkyaffs2_extra_2knand_flags := -c $(BOARD_KERNEL_2KPAGESIZE)
+endif
+
+ifneq ($(BOARD_KERNEL_2KSPARESIZE),)
+mkyaffs2_extra_2knand_flags += -s $(BOARD_KERNEL_2KSPARESIZE)
 endif
 
 ifneq ($(BOARD_KERNEL_SPARESIZE),)
@@ -780,6 +835,24 @@ systemimage_intermediates := \
 	$(call intermediates-dir-for,PACKAGING,systemimage)
 BUILT_SYSTEMIMAGE := $(systemimage_intermediates)/system.img
 
+# Build system image for 8bit BCH ECC NAND with different spare size
+ifeq (true,$(BOARD_HAS_8BIT_BCHECC_SUPPORT))
+define build-systemimage-bchecc-target
+    @echo "Target system fs image for 8 bit BCH ECC: $(INSTALLED_BCHECC_SYSTEMIMAGE) - yaffs2"
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_bchecc_flags) $(TARGET_OUT) $(INSTALLED_BCHECC_SYSTEMIMAGE)
+    $(hide) chmod a+r $(INSTALLED_BCHECC_SYSTEMIMAGE)
+endef
+endif
+
+# Build system image for 2K NAND with different page & spare size
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+define build-systemimage-2knand-target
+    @echo "Target system fs image for 2K NAND: $(INSTALLED_2KNAND_SYSTEMIMAGE) - yaffs2"
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_2knand_flags) $(TARGET_OUT) $(INSTALLED_2KNAND_SYSTEMIMAGE)
+    $(hide) chmod a+r $(INSTALLED_2KNAND_SYSTEMIMAGE)
+endef
+endif
+
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
 ## generate a yaffs2 image and an ext2/3/4 image
 # $(1): output file
@@ -792,6 +865,8 @@ define build-systemimage-target
     @mkdir -p $(dir $(INSTALLED_SYSTEMIMAGE))
     $(call build-userimage-ext-target,$(TARGET_OUT),$(INSTALLED_SYSTEMIMAGE),system,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
     $(hide) chmod a+r $(INSTALLED_SYSTEMIMAGE).$(INTERNAL_USERIMAGES_EXT_VARIANT)
+    $(hide) $(call build-systemimage-bchecc-target)
+    $(hide) $(call build-systemimage-2knand-target)
 endef
 
 else # INTERNAL_USERIMAGES_USE_EXT != true
@@ -810,6 +885,9 @@ $(BUILT_SYSTEMIMAGE): $(FULL_SYSTEMIMAGE_DEPS) $(INSTALLED_FILES_FILE)
 	$(call build-systemimage-target,$@)
 
 INSTALLED_SYSTEMIMAGE := $(PRODUCT_OUT)/system.img
+INSTALLED_BCHECC_SYSTEMIMAGE := $(BCHECC_OUT)/system.bchecc.img
+INSTALLED_2KNAND_SYSTEMIMAGE := $(2KPAGENAND_OUT)/system.2knand.img
+
 SYSTEMIMAGE_SOURCE_DIR := $(TARGET_OUT)
 
 # The system partition needs room for the recovery image as well.  We
@@ -905,6 +983,24 @@ boottarball-nodeps btnod: $(FS_GET_STATS) \
 INTERNAL_USERDATAIMAGE_FILES := \
 	$(filter $(TARGET_OUT_DATA)/%,$(ALL_DEFAULT_INSTALLED_MODULES))
 
+# Build system image for 8bit BCH ECC NAND with different spare size
+ifeq ($(BOARD_HAS_8BIT_BCHECC_SUPPORT),true)
+define build-userdataimage-bchecc-target
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_bchecc_flags) $(TARGET_OUT_DATA) $(BUILT_USERDATAIMAGE_BCHECC_TARGET)
+    $(hide) chmod a+r $(BUILT_USERDATAIMAGE_BCHECC_TARGET)
+    $(hide) $(call assert-max-image-size,$(BUILT_USERDATAIMAGE_BCHECC_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
+endef
+endif
+
+# Build system image for 2K page NAND with different spare size
+ifeq ($(BOARD_SUPPORTS_2KNAND_PAGE),true)
+define build-userdataimage-2knand-target
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_2knand_flags) $(TARGET_OUT_DATA) $(BUILT_USERDATAIMAGE_2KNAND_TARGET)
+    $(hide) chmod a+r $(BUILT_USERDATAIMAGE_2KNAND_TARGET)
+    $(hide) $(call assert-max-image-size,$(BUILT_USERDATAIMAGE_2KNAND_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
+endef
+endif
+
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
 ## Generate an ext2 image
 define build-userdataimage-target
@@ -916,6 +1012,8 @@ define build-userdataimage-target
     $(call build-userimage-ext-target,$(TARGET_OUT_DATA),$(INSTALLED_USERDATAIMAGE_TARGET),data,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_USERDATAIMAGE_PARTITION_SIZE))
     $(hide) chmod a+r $(INSTALLED_USERDATAIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
     $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
+    $(hide) $(call build-userdataimage-bchecc-target)
+    $(hide) $(call build-userdataimage-2knand-target)
 endef
 
 else # INTERNAL_USERIMAGES_USE_EXT != true
@@ -931,6 +1029,8 @@ endef
 endif # INTERNAL_USERIMAGES_USE_EXT
 
 BUILT_USERDATAIMAGE_TARGET := $(PRODUCT_OUT)/userdata.img
+BUILT_USERDATAIMAGE_BCHECC_TARGET := $(BCHECC_OUT)/userdata.bchecc.img
+BUILT_USERDATAIMAGE_2KNAND_TARGET := $(2KPAGENAND_OUT)/userdata.2knand.img
 
 # We just build this directly to the install location.
 INSTALLED_USERDATAIMAGE_TARGET := $(BUILT_USERDATAIMAGE_TARGET)
@@ -968,6 +1068,24 @@ userdatatarball-nodeps: $(FS_GET_STATS)
 INTERNAL_PERSISTIMAGE_FILES := \
 	$(filter $(TARGET_OUT_PERSIST)/%,$(ALL_DEFAULT_INSTALLED_MODULES))
 
+# Build persist image for 8bit BCH ECC NAND with different spare size
+ifeq (true,$(BOARD_HAS_8BIT_BCHECC_SUPPORT))
+define build-persistimage-bchecc-target
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_bchecc_flags) $(TARGET_OUT_PERSIST) $(BUILT_PERSISTIMAGE_BCHECC_TARGET)
+    $(hide) chmod a+r $(BUILT_PERSISTIMAGE_BCHECC_TARGET)
+    $(hide) $(call assert-max-image-size,$(BUILT_PERSISTIMAGE_BCHECC_TARGET),$(BOARD_PERSISTIMAGE_PARTITION_SIZE),yaffs)
+endef
+endif
+
+# Build persist image for 2k page NAND with different spare size
+ifeq (true,$(BOARD_SUPPORTS_2KNAND_PAGE))
+define build-persistimage-2knand-target
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_2knand_flags) $(TARGET_OUT_PERSIST) $(BUILT_PERSISTIMAGE_2KNAND_TARGET)
+    $(hide) chmod a+r $(BUILT_PERSISTIMAGE_2KNAND_TARGET)
+    $(hide) $(call assert-max-image-size,$(BUILT_PERSISTIMAGE_2KNAND_TARGET),$(BOARD_PERSISTIMAGE_PARTITION_SIZE),yaffs)
+endef
+endif
+
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
 ## Generate an ext image
 define build-persistimage-target
@@ -979,6 +1097,8 @@ define build-persistimage-target
     $(call build-userimage-ext-target,$(TARGET_OUT_PERSIST),$(INSTALLED_PERSISTIMAGE_TARGET),persist,$(INTERNAL_USERIMAGES_EXT_VARIANT),$(BOARD_PERSISTIMAGE_PARTITION_SIZE))
     $(hide) chmod a+r $(INSTALLED_PERSISTIMAGE_TARGET).$(INTERNAL_USERIMAGES_EXT_VARIANT)
     $(hide) $(call assert-max-image-size,$(INSTALLED_PERSISTIMAGE_TARGET),$(BOARD_PERSISTIMAGE_PARTITION_SIZE),yaffs)
+    $(hide) $(call build-persistimage-bchecc-target)
+    $(hide) $(call build-persistimage-2knand-target)
 endef
 
 else # INTERNAL_USERIMAGES_USE_EXT != true
@@ -994,6 +1114,8 @@ endef
 endif # INTERNAL_USERIMAGES_USE_EXT
 
 BUILT_PERSISTIMAGE_TARGET := $(PRODUCT_OUT)/persist.img
+BUILT_PERSISTIMAGE_BCHECC_TARGET := $(BCHECC_OUT)/persist.bchecc.img
+BUILT_PERSISTIMAGE_2KNAND_TARGET := $(2KPAGENAND_OUT)/persist.2knand.img
 
 # We just build this directly to the install location.
 INSTALLED_PERSISTIMAGE_TARGET := $(BUILT_PERSISTIMAGE_TARGET)
