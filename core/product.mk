@@ -262,6 +262,6 @@ $(strip \
         $(eval changed_variables := $(changed_variables) $(v))) \
    ) \
   $(if $(changed_variables),\
-    $(eval $(warning The following variables have been changed: $(changed_variables))),)
+    $(eval $(error The following variables have been changed: $(changed_variables))),)
 )
 endef
