@@ -774,6 +774,8 @@ aboot: $(INSTALLED_BOOTLOADER_TARGET)
 
 ifeq ($(BUILD_TINY_ANDROID), true)
 INSTALLED_RECOVERYIMAGE_TARGET :=
+INTERNAL_OTA_PACKAGE_TARGET :=
+INTERNAL_MMC_OTA_PACKAGE_TARGET :=
 endif
 
 # Build files and then package it into the rom formats
@@ -786,6 +788,8 @@ droidcore: files \
 	$(INSTALLED_PERSISTIMAGE_TARGET) \
 	$(INSTALLED_CACHEIMAGE_TARGET) \
 	$(INSTALLED_TOMBSTONESIMAGE_TARGET) \
+	$(INTERNAL_OTA_PACKAGE_TARGET) \
+	$(INTERNAL_MMC_OTA_PACKAGE_TARGET) \
 	$(INSTALLED_FILES_FILE)
 
 # dist_files only for putting your library into the dist directory with a full build.

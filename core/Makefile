@@ -1279,6 +1279,8 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 		$(INSTALLED_TOMBSTONESIMAGE_TARGET) \
 		$(INSTALLED_ANDROID_INFO_TXT_TARGET) \
 		$(built_ota_tools) \
+		$(INTERNAL_OTA_PACKAGE_TARGET) \
+		$(INTERNAL_MMC_OTA_PACKAGE_TARGET) \
 		$(APKCERTS_FILE) \
 		$(HOST_OUT_EXECUTABLES)/fs_config \
 		| $(ACP)
@@ -1410,8 +1412,24 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTATOOLS)
            -k $(KEY_CERT_PAIR) \
            $(BUILT_TARGET_FILES_PACKAGE) $@
 
+ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
+INTERNAL_MMC_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name)_mmc.zip
+else
+INTERNAL_MMC_OTA_PACKAGE_TARGET :=
+endif
+
+$(INTERNAL_MMC_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
+
+$(INTERNAL_MMC_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(OTATOOLS)
+	@echo "Package OTA: $@"
+	$(hide) ./build/tools/releasetools/ota_from_target_files -v \
+	   -p $(HOST_OUT) \
+           -d MMC \
+           -k $(KEY_CERT_PAIR) \
+           $(BUILT_TARGET_FILES_PACKAGE) $@
+
 .PHONY: otapackage
-otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+otapackage: $(INTERNAL_OTA_PACKAGE_TARGET) $(INTERNAL_MMC_OTA_PACKAGE_TARGET)
 
 # -----------------------------------------------------------------
 # The update package

@@ -78,7 +78,7 @@ def CloseInheritedPipes():
       pass
 
 
-def LoadInfoDict(zip):
+def LoadInfoDict(zip, type):
   """Read and parse the META/misc_info.txt key/value pairs from the
   input target files and return a dict."""
 
@@ -141,15 +141,18 @@ def LoadInfoDict(zip):
   makeint("recovery_size")
   makeint("boot_size")
 
-  d["fstab"] = LoadRecoveryFSTab(zip)
+  d["fstab"] = LoadRecoveryFSTab(zip, type)
   return d
 
-def LoadRecoveryFSTab(zip):
+def LoadRecoveryFSTab(zip, type):
   class Partition(object):
     pass
 
   try:
-    data = zip.read("RECOVERY/RAMDISK/etc/recovery.fstab")
+    if type == 'MTD':
+        data = zip.read("RECOVERY/RAMDISK/etc/recovery.fstab")
+    elif type == 'MMC':
+        data = zip.read("RECOVERY/RAMDISK/etc/recovery_mmc.fstab")
   except KeyError:
     print "Warning: could not find RECOVERY/RAMDISK/etc/recovery.fstab in %s." % zip
     data = ""

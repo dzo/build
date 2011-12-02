@@ -51,6 +51,10 @@ Usage:  ota_from_target_files [flags] input_target_files output_ota_package
 
   -a  (--aslr_mode)  <on|off>
       Specify whether to turn on ASLR for the package (on by default).
+
+  -d  (--device_type) <type>
+      Specify mmc or mtd type device. mtd by default
+
 """
 
 import sys
@@ -87,6 +91,7 @@ OPTIONS.omit_prereq = False
 OPTIONS.extra_script = None
 OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
+OPTIONS.device_type = 'MTD'
 
 def MostPopularKey(d, default):
   """Given a dict, return the key corresponding to the largest
@@ -381,7 +386,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
       script=script,
       input_tmp=OPTIONS.input_tmp,
       metadata=metadata,
-      info_dict=OPTIONS.info_dict)
+      info_dict=OPTIONS.info_dict,
+      type=OPTIONS.device_type)
 
   if not OPTIONS.omit_prereq:
     ts = GetBuildProp("ro.build.date.utc", input_zip)
@@ -760,12 +766,14 @@ def main(argv):
         OPTIONS.aslr_mode = False
     elif o in ("--worker_threads"):
       OPTIONS.worker_threads = int(a)
+    elif o in ("-d", "--device_type"):
+      OPTIONS.device_type = a
     else:
       return False
     return True
 
   args = common.ParseOptions(argv, __doc__,
-                             extra_opts="b:k:i:d:wne:a:",
+                             extra_opts="b:k:i:d:wne:a:d:",
                              extra_long_opts=["board_config=",
                                               "package_key=",
                                               "incremental_from=",
@@ -774,6 +782,7 @@ def main(argv):
                                               "extra_script=",
                                               "worker_threads=",
                                               "aslr_mode=",
+                                              "device_type=",
                                               ],
                              extra_option_handler=option_handler)
 
@@ -788,7 +797,7 @@ def main(argv):
   OPTIONS.input_tmp, input_zip = common.UnzipTemp(args[0])
 
   OPTIONS.target_tmp = OPTIONS.input_tmp
-  OPTIONS.info_dict = common.LoadInfoDict(input_zip)
+  OPTIONS.info_dict = common.LoadInfoDict(input_zip, OPTIONS.device_type)
   if OPTIONS.verbose:
     print "--- target info ---"
     common.DumpInfoDict(OPTIONS.info_dict)
@@ -813,7 +822,7 @@ def main(argv):
     print "unzipping source target-files..."
     OPTIONS.source_tmp, source_zip = common.UnzipTemp(OPTIONS.incremental_source)
     OPTIONS.target_info_dict = OPTIONS.info_dict
-    OPTIONS.source_info_dict = common.LoadInfoDict(source_zip)
+    OPTIONS.source_info_dict = common.LoadInfoDict(source_zip, OPTIONS.device_type)
     if OPTIONS.package_key is None:
       OPTIONS.package_key = OPTIONS.source_info_dict.get(
           "default_system_dev_certificate",
