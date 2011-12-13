@@ -60,6 +60,7 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_COPY_FILES := \
         system/bluetooth/data/audio.conf:system/etc/bluetooth/audio.conf \
+        system/bluetooth/data/main.conf:system/etc/bluetooth/main.conf \
         system/bluetooth/data/auto_pairing.conf:system/etc/bluetooth/auto_pairing.conf \
         system/bluetooth/data/blacklist.conf:system/etc/bluetooth/blacklist.conf \
         system/bluetooth/data/input.conf:system/etc/bluetooth/input.conf \
