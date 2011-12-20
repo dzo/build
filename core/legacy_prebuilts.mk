@@ -37,6 +37,7 @@ GRANDFATHERED_ALL_PREBUILT := \
 	blacklist.conf \
 	bmgr \
 	boolean.g2g \
+	bootloader \
 	bp.img \
 	brcm_guci_drv \
 	bypassfactory \
@@ -95,6 +96,7 @@ GRANDFATHERED_ALL_PREBUILT := \
 	mbm_consumer.bin \
 	mdm_panicd \
 	monkey \
+	nandwrite \
 	network.conf \
 	phone_type_choice.g2g \
 	pm \
