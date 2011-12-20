@@ -555,7 +555,7 @@ ifneq ($(filter-out $(GRANDFATHERED_ALL_PREBUILT),$(strip $(notdir $(ALL_PREBUIL
   $(warning *)
   $(foreach bad_prebuilt,$(filter-out $(GRANDFATHERED_ALL_PREBUILT),$(strip $(notdir $(ALL_PREBUILT)))),$(warning * unexpected $(bad_prebuilt) in ALL_PREBUILT))
   $(warning *)
-  $(warning ALL_PREBUILT contains unexpected files)
+  $(error ALL_PREBUILT contains unexpected files)
 endif
 
 # -------------------------------------------------------------------
