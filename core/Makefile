@@ -348,6 +348,29 @@ $(INSTALLED_RAMDISK_TARGET): $(MKBOOTFS) $(INTERNAL_RAMDISK_FILES) | $(MINIGZIP)
 	$(call pretty,"Target ram disk: $@")
 	$(hide) $(MKBOOTFS) $(TARGET_ROOT_OUT) | $(MINIGZIP) > $@
 
+TARGET_SHA_TYPE := $(strip $(TARGET_SHA_TYPE))
+ifeq ($(TARGET_BOOTIMG_SIGNED),true)
+
+ifndef TARGET_SHA_TYPE
+  TARGET_SHA_TYPE := sha256
+endif
+
+# $(1): Image name
+# $(2): Image arguments
+define build-boot-image
+	$(hide) $(MKBOOTIMG) $(2) --output $(1).nonsecure
+	$(hide) openssl dgst -$(TARGET_SHA_TYPE)  -binary $(1).nonsecure > $(1).$(TARGET_SHA_TYPE)
+	$(hide) openssl rsautl -sign -in $(1).$(TARGET_SHA_TYPE) -inkey $(PRODUCT_PRIVATE_KEY) -out $(1).sig
+	$(hide) dd if=/dev/zero of=$(1).sig.padded bs=$(BOARD_KERNEL_PAGESIZE) count=1
+	$(hide) dd if=$(1).sig of=$(1).sig.padded conv=notrunc
+	$(hide) cat $(1).nonsecure $(1).sig.padded > $(1)
+	$(hide) rm -rf $(1).$(TARGET_SHA_TYPE) $(1).sig $(1).sig.padded
+endef
+else
+define build-boot-image
+	$(hide) $(MKBOOTIMG) $(2) --output $(1)
+endef
+endif
 
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
 
@@ -379,6 +402,8 @@ endif
 BOARD_KERNEL_PAGESIZE := $(strip $(BOARD_KERNEL_PAGESIZE))
 ifdef BOARD_KERNEL_PAGESIZE
   INTERNAL_BOOTIMAGE_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
+else
+  BOARD_KERNEL_PAGESIZE := 2048
 endif
 
 INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
@@ -403,9 +428,10 @@ else # TARGET_BOOTIMAGE_USE_EXT2 != true
 
 $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES)
 	$(call pretty,"Target boot image: $@")
-	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --output $@
+	$(hide) $(call build-boot-image,$@,$(INTERNAL_BOOTIMAGE_ARGS))
 	$(hide) $(call install-2knand-boot-image)
 	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE),raw)
+
 endif # TARGET_BOOTIMAGE_USE_EXT2
 
 else	# TARGET_NO_KERNEL
@@ -750,7 +776,7 @@ $(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
 	cat $(INSTALLED_DEFAULT_PROP_TARGET) $(recovery_build_prop) \
 	        > $(TARGET_RECOVERY_ROOT_OUT)/default.prop
 	$(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $(recovery_ramdisk)
-	$(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) --output $@
+	$(hide) $(call build-boot-image,$@,$(INTERNAL_RECOVERYIMAGE_ARGS))
 	$(hide) $(call install-2knand-recovery-image)
 	@echo ----- Made recovery image -------- $@
 	$(hide) $(call assert-max-image-size,$@,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE),raw)
@@ -1299,6 +1325,9 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 ifdef INSTALLED_KERNEL_TARGET
 	$(hide) $(ACP) $(INSTALLED_KERNEL_TARGET) $(zip_root)/RECOVERY/kernel
 endif
+ifeq ($(TARGET_BOOTIMG_SIGNED),true)
+	$(hide) $(ACP) $(PRODUCT_PRIVATE_KEY) $(zip_root)/RECOVERY/sign-key
+endif
 ifdef INSTALLED_2NDBOOTLOADER_TARGET
 	$(hide) $(ACP) \
 		$(INSTALLED_2NDBOOTLOADER_TARGET) $(zip_root)/RECOVERY/second
@@ -1318,6 +1347,9 @@ endif
 		$(TARGET_ROOT_OUT),$(zip_root)/BOOT/RAMDISK)
 ifdef INSTALLED_KERNEL_TARGET
 	$(hide) $(ACP) $(INSTALLED_KERNEL_TARGET) $(zip_root)/BOOT/kernel
+endif
+ifeq ($(TARGET_BOOTIMG_SIGNED),true)
+	$(hide) $(ACP) $(PRODUCT_PRIVATE_KEY) $(zip_root)/BOOT/sign-key
 endif
 ifdef INSTALLED_2NDBOOTLOADER_TARGET
 	$(hide) $(ACP) \
