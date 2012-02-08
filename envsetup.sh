@@ -322,7 +322,7 @@ function chooseproduct()
         elif (echo -n $ANSWER | grep -q -e "^[0-9][0-9]*$") ; then
             local poo=`echo -n $ANSWER`
             if [ $poo -le ${#prodlist[@]} ] ; then
-                export TARGET_PRODUCT=${prodlist[$(($ANSWER-$_arrayoffset))]}
+                export TARGET_PRODUCT=${prodlist[$(($ANSWER-1))]}
             else
                 echo "** Bad product selection: $ANSWER"
             fi
